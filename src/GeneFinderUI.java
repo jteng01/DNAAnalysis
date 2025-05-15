@@ -21,8 +21,8 @@ public class GeneFinderUI {
         loadButton.addActionListener(this::handleLoad);
         findButton.addActionListener(this::handleFindGenes);
 
-        sequenceArea = new JTextArea(10, 50);  // 10 rows, 50 cols
-        sequenceArea.setEditable(false);       // read-only
+        sequenceArea = new JTextArea();
+        sequenceArea.setEditable(true);
         JScrollPane sequenceScrollPane = new JScrollPane(sequenceArea);
         sequenceScrollPane.setBorder(BorderFactory.createTitledBorder("Loaded DNA Sequence"));
 
@@ -60,6 +60,12 @@ public class GeneFinderUI {
             try {
                 String content = FileHandler.readDNAFromFile(selected).toUpperCase();
 
+                if (content.isEmpty()) {
+                    resultArea.setText("Error: The selected file is empty.");
+                    sequenceArea.setText("");
+                    return;
+                }
+
                 if (!content.matches("[CATG]*")) {
                     resultArea.setText("Error: File contains invalid characters.\nOnly C, A, T, and G are allowed.");
                     sequenceArea.setText("");
@@ -78,12 +84,19 @@ public class GeneFinderUI {
     }
 
     private void handleFindGenes(ActionEvent e) {
-        if (dnaSequence.isEmpty()) {
-            resultArea.setText("Please load a DNA file.");
+        String userInput = sequenceArea.getText().toUpperCase().trim();
+
+        if (userInput.isEmpty()) {
+            resultArea.setText("DNA sequence is empty. Load a file or enter a sequence.");
             return;
         }
 
-        DNAReader reader = new DNAReader(dnaSequence);
+        if (!userInput.matches("[CATG]+")) {
+            resultArea.setText("Error: Sequence contains invalid characters.\nOnly C, A, T, and G are allowed.");
+            return;
+        }
+
+        DNAReader reader = new DNAReader(userInput);
         ArrayList<String> genes = reader.locateGenes();
 
         StringBuilder output = new StringBuilder();

@@ -7,10 +7,12 @@ public class FileHandler {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
+            System.out.println("File size (bytes): " + file.length());
             while ((line = reader.readLine()) != null) {
                 sb.append(line.trim());
             }
         }
+
 
         return sb.toString();
     }
