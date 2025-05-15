@@ -8,18 +8,22 @@ import java.util.ArrayList;
 public class GeneFinderUI {
     private final JTextArea sequenceArea;
     private final JTextArea resultArea;
+    private final JLabel statusLabel;
     private String dnaSequence = "";
-
+    private ArrayList<String> currentGenes = new ArrayList<>();
 
     public GeneFinderUI() {
         JFrame frame = new JFrame("DNA Gene Finder");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(600, 400);
+        frame.setSize(600, 450);
 
         JButton loadButton = new JButton("Load DNA File");
         JButton findButton = new JButton("Locate Genes");
+        JButton saveButton = new JButton("Save Genes to File");
+
         loadButton.addActionListener(this::handleLoad);
         findButton.addActionListener(this::handleFindGenes);
+        saveButton.addActionListener(this::handleSaveGenes);
 
         sequenceArea = new JTextArea();
         sequenceArea.setEditable(true);
@@ -29,11 +33,15 @@ public class GeneFinderUI {
         resultArea = new JTextArea();
         resultArea.setEditable(false);
         JScrollPane resultScrollPane = new JScrollPane(resultArea);
-        resultScrollPane.setBorder(BorderFactory.createTitledBorder("Results"));
+        resultScrollPane.setBorder(BorderFactory.createTitledBorder("Gene Results"));
+
+        statusLabel = new JLabel("Status: Ready");
+        statusLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
 
         JPanel topPanel = new JPanel();
         topPanel.add(loadButton);
         topPanel.add(findButton);
+        topPanel.add(saveButton);
 
         JPanel textAreasPanel = new JPanel();
         textAreasPanel.setLayout(new BoxLayout(textAreasPanel, BoxLayout.Y_AXIS));
@@ -42,18 +50,16 @@ public class GeneFinderUI {
 
         frame.getContentPane().add(topPanel, BorderLayout.NORTH);
         frame.getContentPane().add(textAreasPanel, BorderLayout.CENTER);
+        frame.getContentPane().add(statusLabel, BorderLayout.SOUTH);
 
         frame.setVisible(true);
     }
 
     private void handleLoad(ActionEvent e) {
         JFileChooser chooser = new JFileChooser();
-
-        FileNameExtensionFilter filter = new FileNameExtensionFilter("Text Files (*.txt)", "txt");
-        chooser.setFileFilter(filter);
+        chooser.setFileFilter(new FileNameExtensionFilter("Text Files (*.txt)", "txt"));
 
         int result = chooser.showOpenDialog(null);
-
         if (result == JFileChooser.APPROVE_OPTION) {
             File selected = chooser.getSelectedFile();
 
@@ -61,25 +67,30 @@ public class GeneFinderUI {
                 String content = FileHandler.readDNAFromFile(selected).toUpperCase();
 
                 if (content.isEmpty()) {
-                    resultArea.setText("Error: The selected file is empty.");
                     sequenceArea.setText("");
+                    resultArea.setText("");
+                    statusLabel.setText("File is empty.");
                     return;
                 }
 
                 if (!content.matches("[CATG]*")) {
-                    resultArea.setText("Error: File contains invalid characters.\nOnly C, A, T, and G are allowed.");
                     sequenceArea.setText("");
+                    resultArea.setText("");
+                    statusLabel.setText("Invalid characters found. Use only C, A, T, G.");
                     return;
                 }
 
                 dnaSequence = content;
-                resultArea.setText("Loaded DNA from: " + selected.getName());
                 sequenceArea.setText(dnaSequence);
+                statusLabel.setText("Loaded DNA from " + selected.getName());
 
             } catch (Exception ex) {
-                resultArea.setText("Error loading file: " + ex.getMessage());
                 sequenceArea.setText("");
+                resultArea.setText("");
+                statusLabel.setText("Error loading file - " + ex.getMessage());
             }
+        } else {
+            statusLabel.setText("Load operation cancelled.");
         }
     }
 
@@ -87,34 +98,71 @@ public class GeneFinderUI {
         String userInput = sequenceArea.getText().toUpperCase().trim();
 
         if (userInput.isEmpty()) {
-            resultArea.setText("DNA sequence is empty. Load a file or enter a sequence.");
+            resultArea.setText("");
+            statusLabel.setText("No DNA sequence entered.");
             return;
         }
 
         if (!userInput.matches("[CATG]+")) {
-            resultArea.setText("Error: Sequence contains invalid characters.\nOnly C, A, T, and G are allowed.");
+            resultArea.setText("");
+            statusLabel.setText("Invalid characters in sequence.");
             return;
         }
 
         DNAReader reader = new DNAReader(userInput);
-        ArrayList<String> genes = reader.locateGenes();
+        currentGenes = reader.locateGenes();
 
-        StringBuilder output = new StringBuilder();
-        if (genes.isEmpty()) {
-            output.append("No genes found.");
+        if (currentGenes.isEmpty()) {
+            resultArea.setText("");
+            statusLabel.setText("No genes found.");
         } else {
-            output.append("Potential Genes found:\n");
-            for (String gene : genes) {
+            StringBuilder output = new StringBuilder();
+            for (String gene : currentGenes) {
                 output.append(gene).append("\n");
             }
+            resultArea.setText(output.toString().trim());
+            statusLabel.setText("Found " + currentGenes.size() + " gene(s).");
+        }
+    }
+
+    private void handleSaveGenes(ActionEvent e) {
+        if (currentGenes == null || currentGenes.isEmpty()) {
+            statusLabel.setText("No genes to save.");
+            return;
         }
 
-        resultArea.setText(output.toString());
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Save Genes As");
+        chooser.setFileFilter(new FileNameExtensionFilter("Text Files (*.txt)", "txt"));
 
-        try {
-            FileHandler.writeGenesToFile(new File("output.txt"), genes);
-        } catch (Exception ex) {
-            resultArea.append("\nFailed to write to output.txt: " + ex.getMessage());
+        int option = chooser.showSaveDialog(null);
+
+        if (option == JFileChooser.APPROVE_OPTION) {
+            File fileToSave = chooser.getSelectedFile();
+
+            if (!fileToSave.getName().toLowerCase().endsWith(".txt")) {
+                fileToSave = new File(fileToSave.getAbsolutePath() + ".txt");
+            }
+
+            if (fileToSave.exists()) {
+                int confirm = JOptionPane.showConfirmDialog(null,
+                        "File exists. Overwrite?",
+                        "Confirm Overwrite",
+                        JOptionPane.YES_NO_OPTION);
+                if (confirm != JOptionPane.YES_OPTION) {
+                    statusLabel.setText("Save cancelled.");
+                    return;
+                }
+            }
+
+            try {
+                FileHandler.writeGenesToFile(fileToSave, currentGenes);
+                statusLabel.setText("Genes saved to " + fileToSave.getAbsolutePath());
+            } catch (Exception ex) {
+                statusLabel.setText("Failed to save - " + ex.getMessage());
+            }
+        } else {
+            statusLabel.setText("Save operation cancelled.");
         }
     }
 }

@@ -1,0 +1,2 @@
+Potential Genes found:
+Frame offset: 0 | Gene: ATGCCCCAACACAAATATTACTAA | Index: 0
