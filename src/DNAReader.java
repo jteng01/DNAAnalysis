@@ -20,7 +20,7 @@ public class DNAReader {
                 genes.add( "Frame offset: " + (atgIndex % 3) + " | Gene: " + dna.substring(atgIndex, stopIndex + 3) + " | Index: " + atgIndex);
             }
 
-            atgIndex = atgIndex + 1;
+            atgIndex = stopIndex + 1;
 
         }
         return genes;
