@@ -17,7 +17,7 @@ public class DNAReader {
 
             int stopIndex = findStopCodon(dna, atgIndex);
             if(stopIndex != -1) {
-                genes.add( "Frame offset: " + (atgIndex % 3) + " | Gene: " + dna.substring(atgIndex, stopIndex + 3) + " | Index: " + atgIndex);
+                genes.add( "Gene: " + dna.substring(atgIndex, stopIndex + 3) + " | Index: " + atgIndex);
             }
 
             atgIndex = stopIndex + 1;
